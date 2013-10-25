@@ -1,0 +1,4 @@
+define('mod/cookie', [
+	],	function(){
+	
+});

@@ -1,0 +1,4 @@
+define('mod/ga', [
+	],	function(){
+	
+});
