@@ -1,0 +1,43 @@
+body, h1, h2, h3, h4, h5, h6, hr, div, p,blockquote,dl, dt, dd, ul, ol, li, pre, form, fieldset, legend, button, input, textarea,th, td, img{border: none;margin: 0;padding: 0;}
+body{font-family:"微软雅黑",Arial,Helvetica,sans-serif;background:#1c1c1c;color:#fff;font-size:16px;-webkit-text-size-adjust:none;-webkit-tap-highlight-color:rgba(0,0,0,0);}
+ul, ol{list-style:none;}
+a {text-decoration:none;color:#fff;}
+ 
+.clr, .list, .row{
+  clear:both;
+}
+.clr:after, .list:after, .row:after {  
+  content: "";  
+  display: block; 
+  clear: both; 
+  visibility: hidden; 
+  font-size: 0;
+  height: 0; 
+ }     
+.hide{
+  display:none !important;
+}
+.bold{
+  font-weight:bold;
+}
+.inline-block{
+  display:inline-block;
+  vertical-align:middle;
+}
+.button{
+    font-size: 15px;
+    color: #b3b4b5;
+    border: 1px solid #2f3030;
+    border-radius: 3px;
+    background-color: #292929;
+    line-height: 30px;
+    padding: 0 6px;
+    cursor: pointer;
+    vertical-align: middle;
+    /* font-weight: bold; */
+    font-family:"微软雅黑",Arial,Helvetica,sans-serif;
+}
+.button:active {
+    border-color: #232626;
+    background-color: #383838;
+}

@@ -2,7 +2,7 @@
  * 加载器
  * @return {[type]} [description]
  */
-define('mod/loader', [
+define('util/loader', [
 	'bjt',
 	], function(BJT){
 	var Util = BJT.Util;

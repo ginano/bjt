@@ -1,4 +1,0 @@
-define('mod/slide', [
-	],	function(){
-	
-});

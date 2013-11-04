@@ -6,6 +6,7 @@
 		slice = [].slice;
 
     var LoadedList={},
+        DownloadingList ={},
        headEl=document.getElementsByTagName("head")[0],
        isFunction=function(f){
             return f instanceof Function;
@@ -61,7 +62,13 @@
             var objClone,
                 con,
                 prop;
-            if(obj===undefined||obj===null){
+            if(
+              obj===undefined
+              ||obj===null 
+              || 'string' === typeof obj 
+              || 'boolean' === typeof obj 
+              || 'number' === typeof obj
+              ){
                     return objClone=obj;
             }
             con=obj.constructor;
@@ -112,25 +119,25 @@
         if(obj instanceof Array){
             for(i=0,len=obj.length;i<len;i++){
                 callback&&callback(i,obj);
-                excuteFunction(callback, i, obj[i]);
+                executeFunction(callback, i, obj[i]);
             }
             return;
         }
         if(obj instanceof Object){
             for(i in obj){
                 if(hasOwn.call(obj,i)){
-                    excuteFunction(callback, i, obj[i]);
+                    executeFunction(callback, i, obj[i]);
                 }
             }
             return;
         }
     }
     /**
-     * [excuteFunction description]
+     * [executeFunction description]
      * @param  {Function} callback [description]
      * @return {[type]}            [description]
      */
-    function excuteFunction( callback ){
+    function executeFunction( callback ){
     	var args;
     	if(isFunction(callback)){
     		args = slice.call(arguments,1);
@@ -143,6 +150,7 @@
      * @return {[type]}     [description]
      */
     function log(str, type){
+      
     	switch(type){
     		case 'error':
     		case 'warn':
@@ -192,6 +200,11 @@
         } else {
             Browser.browser='unkown';
             Browser.version= '0.0'; 
+        }
+         //如果是webkit设置webkit版本
+        temp = ua.match(/webkit\/(\d+(?:\.\d+)?)/);
+        if(temp && temp[1]){
+          Browser.webkit = temp[1];
         }
         //如果是android手机
         if(/android/.test(ua)){
@@ -264,7 +277,7 @@
         if(LoadedList[url]){
           return true;
         }
-        if(/\S+\.css/i.test(url)){
+        if(checkFileExtension('css', url)){
           stylesheet = document.styleSheets;
           len = stylesheet.length;
           while(len--){
@@ -274,7 +287,7 @@
         if(LoadedList[url]){
           return true;
         }
-        if(/\S+\.js/i.test(url)){
+        if(checkFileExtension('js', url)){
           scripts = document.scripts;
           len = scripts.length;
           while(len--){
@@ -287,7 +300,24 @@
           return false;
         }
       }
-        
+       /**
+       * 获取/设置是否正在下载
+       * @param  {[type]}  url [description]
+       * @param  {[type]}  isDownloading [description]
+       * @return {Boolean}     [description]
+       */
+      function isDownloading(url, isDownloading){
+        if(undefined === isDownloading){
+          return DownloadingList[url] ===true;
+        }
+        //下载完毕等状态
+        if(!isDownloading){
+          delete DownloadingList[url];
+        }else{
+          DownloadingList[url] =true;
+        }
+      }
+
        /**
        *加载js文件 
        * @param {Object} url
@@ -300,17 +330,35 @@
                 LoadedList[url]=true;
                 clear();
                 log('load js file success:'+url);
-                excuteFunction(callback);
+                executeFunction(callback);
             },
             clear=function(){
+               isDownloading(url, false);
                script.onload=script.onreadystatechange=script.onerror=null;
                head.removeChild(script);
                head=script=null;
+            },
+            retryTimes = 1,
+            waitForSuccess = function(){
+              if(!isDownloading(url)){
+                executeFunction(callback);
+              }else if(retryTimes>10){
+                alert('js file ['+url+'] download faild!');
+                log('js file ['+url+'] download faild!', 'error');
+                return;
+              }else{
+                setTimeout(waitForSuccess, (retryTimes++)*200);
+              }
             };
         
         if(isLoadedResource(url)){
-            excuteFunction(callback);
+            executeFunction(callback);
             return;
+        }
+        //如果正在加载
+        if(isDownloading(url)){
+          setTimeout(waitForSuccess, 200);
+          return;
         }
         head = headEl;
         script = document.createElement("script");
@@ -338,7 +386,7 @@
                 }
             }
         }
-        
+        isDownloading(url, true);
         script.src = url;
         head.appendChild(script);
     }
@@ -354,21 +402,40 @@
             opera,
             chrome,
             poll,
+            retryTimes =1,
+            webkit = (UA.webkit || 0)-0,
             //成功之后做的事情
             wellDone=function(){
                 LoadedList[url]=true;
                 clear();
                 log('load css file success:'+url);
-                excuteFunction(callback);
+                executeFunction(callback);
             },
             clear=function(){
+                isDownloading(url, false);
                 timer=null;
                 link.onload=link.onerror=null;
                 head=null;
+            },
+            waitForSuccess = function(){
+              if(!isDownloading(url)){
+                executeFunction(callback);
+              }else if(retryTimes>10){
+                alert('css file ['+url+'] download faild!');
+                log('css file ['+url+'] download faild!', 'error');
+                return;
+              }else{
+                setTimeout(waitForSuccess, (retryTimes++)*200);
+              }
             };
         if(isLoadedResource(url)){
-            excuteFunction(callback);
+            executeFunction(callback);
             return;
+        }
+        //如果正在加载
+        if(isDownloading(url)){
+          setTimeout(waitForSuccess, 200);
+          return;
         }
         head = headEl;
         link = document.createElement("link");
@@ -380,6 +447,7 @@
            clear();
            log('load css file error:'+url, 'error');
         }; 
+        isDownloading(url, true);
         if(isFunction(callback)){
             //如果是IE系列,直接load事件
             if(UA.browser=='ie' 
@@ -387,6 +455,7 @@
                 || UA.browser=='opera'
                 || (UA.browser=='chrome' && UA.version>19) 
                 || (UA.browser=='safari' && UA.version>5.9)
+                || webkit > 536.10
                 
             ){
             
@@ -400,6 +469,7 @@
                (UA.browser=='chrome' && UA.version>9)
                || (UA.browser=='safari' && UA.version>4.9) 
                || UA.browser=='firefox' 
+               || webkit > 534.14
             ){
             
                 head.appendChild(link);
@@ -415,13 +485,35 @@
             }else{//轮询实现
                 head.appendChild(link);
                 poll=function(){
-                    if(link.sheet && link.sheet.cssRules){
-                        wellDone();
+                    var _fun =function (){
+                          var isD = false;
+                          //如果是webkit的
+                          if(webkit>0 && document.stylesheet){
+                            isD = isLoadedResource(url);
+                          }else{
+                            try{
+                              isD = !!link.sheet.cssRules;
+                              isD = true;
+                            }catch(ex){
+                              if (ex.name === "NS_ERROR_DOM_SECURITY_ERR") {
+                                isD = true;
+                              }
+                            }
+                          }
+                          return isD;
+                        };
+                    if(retryTimes>10){
+                      alert('css file' + url +' download faild!');
+                      log('css file' + url +' download faild!', 'error');
+                      wellDone();
+                      return;
+                    }else if(_fun()){
+                      wellDone();
                     }else{
-                        setTimeout(poll,300);
+                      setTimeout(poll, (++retryTimes)*200);
                     }
                 };
-                poll();
+                setTimeout(poll, 200);
             }
         }else{
             head.appendChild(link);
@@ -447,7 +539,7 @@
                * @param {Object} done
                */
               load=function(url, done){
-                  if(/\.js(?:\?\S+|#\S+)?$/.test(url)){
+                  if(checkFileExtension('js', url)){
                       loadJS(url,done);
                   }else{
                       loadCSS(url,done);
@@ -458,7 +550,7 @@
                   if(now){
                      load(now,orderLoad);
                   }else{
-                     excuteFunction(callback);
+                     executeFunction(callback);
                   }
               };
           if(!len || len<1){
@@ -473,7 +565,7 @@
                  load(urls[i],function(){
                      now+=1;
                      if(now==len){
-                        excuteFunction(callback);
+                        executeFunction(callback);
                      }
                  });
              }
@@ -494,6 +586,10 @@
    */
   function isRelativePath(path){
     return /^(?:\/\S+|\.\/\S+|\.\.\/\S+|\S+\/)/i.test(path);
+  }
+  function checkFileExtension(ext, str){
+    var reg = new RegExp('\\.'+ext+'([\\?#]\\S+)?$', 'i');
+    return reg.test(str);
   }
   /**
    * 获取url的相关信息
@@ -612,15 +708,46 @@
       }
       return (baseInfo?baseInfo.origin:'')+a1.join('/');
     } 
+    var ISDOMREADY=false;
+    /** 
+     * [afterDomReady description]
+     * @param  {Function} callback [description]
+     * @return {[type]}            [description]
+     */
+    function afterDomReady(callback){
+      var doc = document;
+      if(ISDOMREADY || /complete/i.test(doc.readyState)){
+        ISDOMREADY = true;
+        executeFunction(callback);
+      }else if(doc.addEventListener){
+        doc.addEventListener('DOMContentLoaded', function(){
+            if(ISDOMREADY){
+              return;
+            }
+            ISDOMREADY = true;
+            executeFunction(callback);
+         }, false);
+      }else if(doc.attachEvent){
+          doc.attachEvent('onreadystatechange', function(){
+            if(ISDOMREADY){
+              return;
+            }
+            ISDOMREADY = true;
+            executeFunction(callback);
+         }, false);
+      }
+    }
 
 	win.BJT ={
+    version:'0.0.1',
+    status:'dev',
 		Util:{
       UA:UA,
 			hasOwn:hasOwn,
 			extend: extend,
 			cloneObject: cloneObject,
 			eachProp:eachProp,
-			excuteFunction: excuteFunction,
+			executeFunction: executeFunction,
 			log: log,
 			GUID: generateUID,
       loadJS: loadJS,
@@ -630,7 +757,9 @@
       getPathInfo: getPathInfo,
       getRelativePath: getRelativePath,
       isUrl: isUrl,
-      isRelativePath: isRelativePath
+      isRelativePath: isRelativePath,
+      afterDomReady: afterDomReady,
+      checkFileExtension:checkFileExtension
 		}
 	};
 })(window);

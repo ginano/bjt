@@ -1,0 +1,14 @@
+.widget-gotop{
+  position: fixed;
+  right: 12px;
+  bottom: 30px;
+  width: 44px;
+  height: 41px;
+  line-height: 38px;
+  z-index: 101;
+  background: url(http://55yule.com/images/back_to_top.png) no-repeat 50% 50%;
+  -webkit-box-shadow: 0 1px 3px rgba(0,0,0,.1);
+  box-shadow: 0 1px 3px rgba(0,0,0,.1);
+  text-align: center;
+  border-radius: 3px;
+}

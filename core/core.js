@@ -3,9 +3,10 @@
 		moduleIndex=0,
 		BJT = win.BJT,
 		Util = BJT.Util,
+        log = Util.log,
         pathSetting={
             mod:'../',
-            core:'core/',
+            core:'../',
             page:'../',
             widget:'../',
             util:'../'
@@ -26,7 +27,7 @@
                         factory=dependences;
                         dependences=[];
                     }else if(!dependences instanceof Array){
-                        Util.log('module '+moduleName+' init faild,becaseof the invalid argument:"req".', 'error');
+                        log('module '+moduleName+' init faild,becaseof the invalid argument:"req".', 'error');
                         return;
                     }
                     break;
@@ -36,7 +37,7 @@
                         dependences=moduleName;
                         moduleName ='';
                     }else{
-                        Util.log('module '+moduleName+' init faild, becaseof the invalid arguments:"req".', 'error');
+                        log('module '+moduleName+' init faild, becaseof the invalid arguments:"req".', 'error');
                         return;
                     }
                     break;
@@ -46,7 +47,7 @@
                     moduleName='';
                     break;
                 default:
-                    JDK.Util.log('module '+moduleName+' init faild, becaseof the invalid arguments.', 'error');
+                    log('module '+moduleName+' init faild, becaseof the invalid arguments.', 'error');
                     return;
                     break;
             }
@@ -56,18 +57,16 @@
             return this;
         },
         getPathByModuleName:function(mn){
-            var moduleName = /\S+\.\S+$/i.test(mn)?mn:(mn+'.js');
-            if(/^util\//i.test(moduleName)){
-                return pathSetting.util + moduleName;
-            }else if(/^page\/[^\/]+/i.test(moduleName)){
-                return pathSetting.page + moduleName;
-            }else if(/^widget\/[^\/]+/i.test(moduleName)){
-                return pathSetting.widget + moduleName;
-            }else if(/^mod\/[^\/]+/i.test(moduleName)){
-                return pathSetting.mod + moduleName;
-            }else{
-                return moduleName+'.js';
+            var moduleName = /\S+\.\S+$/i.test(mn)?mn:(mn+'.js'),
+                tempReg;
+            for(var p in pathSetting){
+                tempReg= new RegExp('^'+p+'\/[^\/]+','i');
+                //如果有配置该路径
+                if(tempReg.test(moduleName)){
+                    return pathSetting[p]+moduleName;
+                }
             }
+            return moduleName;
         },
         /**
          * 获取绝对的模块名，把./以及../格式的模块转化为/xxx/xxx的形式
@@ -105,7 +104,7 @@
                     }
                 }
                 hasdone = true;
-                Util.excuteFunction(callback, module);
+                Util.executeFunction(callback, module);
             }
             if(list instanceof Array && (len = list.length)){
                 i = len;
@@ -116,19 +115,31 @@
                 }
                 for( i=0;i<len;i++){
                     temp=moduleList[allList[i]];
-                    if(/\S+\.css$/i.test(allList[i])){
-                        (function(modname){
-                            var _url = self.getPathByModuleName(modname);
-                            Util.asyncLoad( _url, function(){
-                                define(modname,function(){
-                                    return {
-                                        url:_url
-                                    };
-                                });
-                                doneList[modname] = true;
-                                allDone();
+                    if(Util.checkFileExtension('css', allList[i])){
+                        /**
+                         * 如果不是开发模式，说明都是打包好了的，不需要去加载了
+                         */
+                        if(BJT.status!='dev'){
+                            define(allList[i],function(){
+                                return {
+                                };
                             });
-                        })(allList[i]);
+                            doneList[allList[i]] = true;
+                            allDone();
+                        }else{
+                            (function(modname){
+                                var _url = self.getPathByModuleName(modname);
+                                Util.asyncLoad( _url, function(){
+                                    define(modname,function(){
+                                        return {
+                                            url:_url
+                                        };
+                                    });
+                                    doneList[modname] = true;
+                                    allDone();
+                                });
+                            })(allList[i]);
+                        }
                     }else if(temp){
                         self.getAllDependences(temp, function(mod){
                             doneList[mod.moduleName] = true;
@@ -164,7 +175,7 @@
                     if(temp){
                         _out.push(temp.getExports());
                     }else{
-                        Util.log('module "'+list[i]+'" not exist when it been required in module:'+this.moduleName, 'warn');
+                        log('module "'+list[i]+'" not exist when it been required in module:'+this.moduleName, 'warn');
                         _out.push({});
                     }
                 }
@@ -173,49 +184,75 @@
         },
         getExports:function(){
             if(!this.exports){
-                this.excuteit(true);
+                this.executeit(true);
             }
             return this.exports;
         },
-        excuteit:function(isByDependce){
+        executeit:function(isByDependce){
            var self= this;
-           function _excute(){
+           //如果是domready之后
+           if(/domready/i.test(isByDependce)){
+                Util.afterDomReady(function(){
+                    self.executeit();
+                });
+                return;
+           }
+           function _execute(){
                var args=self.getRequireList();
                self.exports=self.factory.apply(self,args);
-               Util.log('[excute]: module "'+self.moduleName+'" excute success!');
+               log('[execute]: module "'+self.moduleName+'" execute success!');
            }
            try{
                if(!isByDependce){
                     this.getAllDependences(this, function(){
-                        _excute();
+                        _execute();
                     });
                }else{
-                _excute();
+                _execute();
                }
                return self;
            }catch(e){
-               Util.log('[excute]: module "'+this.moduleName+'" excute failed!\n \t becase of that:\n\t\t'+e, 'error');
+               log('[execute]: module "'+this.moduleName+'" execute failed!\n \t becase of that:\n\t\t'+e, 'error');
            }
         }
 	};
 	// body...
 	function define(moduleName, dependces, factory){
 		try{
-            var module=new Module(moduleName, dependces, factory);
+            var module=new Module(moduleName, dependces, factory),
+                old = moduleList[module.moduleName];
+            if(old){
+                log('[warn]:'+module.moduleName + ' has been defined again!', 'warn');
+            }
             moduleList[module.moduleName] = module;
-            Util.log('[register]: module "'+('string'===typeof moduleName?moduleName:'anonymous '+module.moduleName)+'" register success!');
+            log('[register]: module "'+('string'===typeof moduleName?moduleName:'anonymous '+module.moduleName)+'" register success!');
             return module;
         }catch(e){
-            Util.log('[register]: module "'+('string'===typeof moduleName?moduleName:'anonymous '+moduleName)+'" register faild!\n\t becase of that:\n\t\t'+e, 'error');
+            log('[register]: module "'+('string'===typeof moduleName?moduleName:'anonymous '+moduleName)+'" register faild!\n\t becase of that:\n\t\t'+e, 'error');
         }
 	}
-	function require(moduleName){
+	function require(moduleName, callback){
 		try{
-			var module = moduleList[moduleName];
-			Util.log('[require]: module "'+moduleName+'" required success!');
-			return module.getExports();
+			var module = moduleList[moduleName],
+                exports;
+            /**
+             * 如果存在
+             */
+            if(module){
+    			log('[require]: module "'+moduleName+'" required success!');
+                exports = module.getExports();
+                Util.executeFunction(callback, exports);
+    			return exports;
+            }else{
+                Util.asyncLoad(getPathByModuleName(moduleName), function(){
+                    var exp = moduleList[moduleName];
+                    exp = (exp && exp.getExports) ? exp.getExports() : {};
+                    Util.executeFunction(callback, exp);
+                });
+                return ;
+            }
 		}catch(e){
-			Util.log('[require]: module "'+moduleName+'" required failed!\n \t becase of that:\n\t\t'+e, 'error');
+			log('[require]: module "'+moduleName+'" required failed!\n \t becase of that:\n\t\t'+e, 'error');
 		}
 	}
     /**
@@ -226,6 +263,13 @@
     function settingPath(obj){
         Util.extend(pathSetting, obj);
     }
+    /**
+     * 设置当前是否处于开发模式，模式的判断有利于处理不同情况
+     * @param {[type]} status [description]
+     */
+    function setDebugStatus(status){
+        win.BJT.status = status || 'dev';
+    }
 	/**
 	 * return the core
 	 * @return {[type]} [description]
@@ -233,7 +277,14 @@
 	define('bjt', function(){
 		return win.BJT;
 	});
+    define('globalSetting', function(){
+        return {
+            setPath:settingPath,
+            setStatus:setDebugStatus
+        };
+    });
 	win.define = win.BJT.define = define;
 	win.require = win.BJT.require = require;
-
+    //这句话还可以用于核心文件的检查
+    log('core_file_load_success');
 })(window);

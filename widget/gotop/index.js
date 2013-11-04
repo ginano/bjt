@@ -1,6 +1,7 @@
-define('mod/backtop', [
+define('widget/gotop/index', [
 	'bjt',
-	'mod/zepto'
+	'util/zepto',
+    './style.css'
 	], function(BJT, $){
 	var  html = '<div class="widget-gotop hide"></div>',
 		 win = window,
@@ -37,7 +38,7 @@ define('mod/backtop', [
             this.dom.on('click', function(e) {
                   e.preventDefault();
                  document.body.scrollTop=0;
-                 Util.excuteFunction(self.options.after);
+                 Util.executeFunction(self.options.after);
                   return false;
             });
            $win.on('scroll',  function(e) {

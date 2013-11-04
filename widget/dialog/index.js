@@ -1,7 +1,9 @@
-define('mod/dialog', [
-		'mod/zepto',
-		'bjt'
-	],	function($, BJT){
+define('widget/dialog', [
+		'util/zepto',
+		'bjt',
+		'./template',
+		'./style.css'
+	],	function($, BJT, Template){
 	var Util = BJT.Util;
 	var zindex =2000;
 	var defaultTemplate ='<div class="hide"></div>',
@@ -53,9 +55,9 @@ define('mod/dialog', [
 		show:function(){
 			var opt = this.options;
 			zindex ++;
-			Util.excuteFunction(opt.beforeShow, this);
+			Util.executeFunction(opt.beforeShow, this);
 			this.$el.css('z-index', zindex).removeClass('hide');
-			Util.excuteFunction(opt.afterShow, this);
+			Util.executeFunction(opt.afterShow, this);
 			this.__isShow = true;
 		},
 		/**
@@ -63,9 +65,9 @@ define('mod/dialog', [
 		 * @return {[type]} [description]
 		 */
 		hide:function(){
-			Util.excuteFunction(opt.beforeHide, this);
+			Util.executeFunction(opt.beforeHide, this);
 			this.$el.addClass('hide');
-			Util.excuteFunction(opt.afterHide, this);
+			Util.executeFunction(opt.afterHide, this);
 			this.__isShow = false;
 		},
 		bindEvent:function(){

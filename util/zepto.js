@@ -1,4 +1,4 @@
-define('mod/zepto', function(){
+define('util/zepto', function(){
 	/* Zepto v1.0-1-ga3cab6c - polyfill zepto detect event ajax form fx - zeptojs.com/license */
 	;(function(undefined){
 	  if (String.prototype.trim === undefined) // fix for iOS 3.2
@@ -213,6 +213,8 @@ define('mod/zepto', function(){
 	  $ = function(selector, context){
 	    return zepto.init(selector, context)
 	  }
+	  /** add by ginano */
+	  $.noop = function(){};
 
 	  function extend(target, source, deep) {
 	    for (key in source)

@@ -1,4 +1,0 @@
-define('mod/gesture', [
-	],	function(){
-	
-});

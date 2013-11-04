@@ -1,4 +1,4 @@
-define('mod/broadcast', function(){
+define('util/broadcast', function(){
   var Notify=function(){
        this.attachFunctionList={};
    };

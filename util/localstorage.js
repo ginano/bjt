@@ -2,7 +2,7 @@
  * 本地存储操作模块
  * @return {[type]} [description]
  */
-define('mod/localstorage', function(){
+define('util/localstorage', function(){
 	return {
 		isSupportDolphinStorage: function() {
 			return window.dolphinLocalStorage && window.dolphinLocalStorage.setItem && window.dolphinLocalStorage.getItem;
