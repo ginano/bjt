@@ -3,10 +3,10 @@
  */
 (function (win, undefined) {
 	var hasOwn=Object.prototype.hasOwnProperty,
-		slice = [].slice;
+		  slice = [].slice;
 
-    var LoadedList={},
-        DownloadingList ={},
+    var LoadedList={},         //存储已经下载过的文件列表
+        DownloadingList ={},   //存储正在下载的文件列表
        headEl=document.getElementsByTagName("head")[0],
        isFunction=function(f){
             return f instanceof Function;
@@ -36,7 +36,6 @@
 	    if(selectedProperty && (p=selectedProperty.length)){
 	        while(p--){
 	            item=selectedProperty[p];
-	            //类继承的时候就不用检查了
 	            if(hasOwn.call(newObj,item)){
 	                (isOverride||!originObj[item]) && (originObj[item]= cloneObject(newObj[item]));
 	            }
@@ -54,8 +53,8 @@
     /**
      *深度copy一个对象 
      * @param {Object} o
-     * @param {Boolean} isCloneFunction 是否复制函数
-     * @param {Boolean} isClonePrototype 是否复制函数的扩展属性
+     * @param {Boolean} isCloneFunction [default=false]是否复制函数
+     * @param {Boolean} isClonePrototype [default=false] 是否复制函数的扩展属性
      */
     function cloneObject(o,isCloneFunction,isClonePrototype){
         function copyObject(obj,isCopyFunction,isCopyPrototype){
@@ -112,7 +111,10 @@
         return copyObject(o,isCloneFunction,isClonePrototype);
     }
     /**
-     *遍历所有的成员 
+     * 遍历所有的成员 
+     * @param  {[type]}   obj      对象或者数组
+     * @param  {Function} callback [description]
+     * @return {[type]}            [description]
      */
     function eachProp(obj,callback){
         var i,len;
@@ -133,7 +135,7 @@
         }
     }
     /**
-     * [executeFunction description]
+     * 执行方法，如果传递了方法，并将后面的参数传递给该方法
      * @param  {Function} callback [description]
      * @return {[type]}            [description]
      */
@@ -145,9 +147,9 @@
     	}
     }
     /**
-     * [log description]
+     * 打印输出日志
      * @param  {[type]} str [description]
-     * @return {[type]}     [description]
+     * @return {[type]}  [option=info]   输出类型有error、wran、info，默认为普通的info
      */
     function log(str, type){
       
@@ -163,8 +165,8 @@
     	}
     }
     /**
-     * [generateUID description]
-     * @param  {[type]} header [description]
+     * 生成随机的唯一标示
+     * @param  {[type]} [header] id前缀
      * @return {[type]}        [description]
      */
     function generateUID(header){
@@ -172,8 +174,14 @@
 		return header+Math.ceil(Math.random()*1000)+'-'+Math.ceil(Math.random()*1000)+'-'+Math.ceil(Math.random()*1000)+'-'+Math.ceil(Math.random()*1000);
 	}
     /**
-     * 获取ua
-     * @return {[type]} [description]
+     * 获取客户端的ua信息ua
+     * @return {[type]} {
+     *         browser:浏览器名称
+     *         version:版本号
+     *         webkit: 如果是webkit就返回对应的内核版本号
+     *         os:操作系统
+     *         bit:操作系统位数
+     * }
      */
     function getUserAgent(){
         var nav=win.navigator,
@@ -270,7 +278,11 @@
         }
         return Browser;
     }
-      /** 判断是否已经加载过此资源 */
+      /**
+       * 判断是否已经加载过此资源 
+       * @param  {[type]}  url [description]
+       * @return {Boolean}     [description]
+       */
       function isLoadedResource(url){
         var styleSheets, scripts,
             len;
@@ -318,9 +330,11 @@
         }
       }
 
-       /**
-       *加载js文件 
-       * @param {Object} url
+      /**
+       * 加载js文件 
+       * @param  {[String]}   url      [description]
+       * @param  {Function} [callback] [description]
+       * @return {[type]}            [description]
        */
       function loadJS(url,callback){
         var head ,
@@ -332,30 +346,40 @@
                 log('load js file success:'+url);
                 executeFunction(callback);
             },
+            //无论成功与否都需要执行清除标签及其相关事件。
+            //防止内存泄露等，因为js一旦加载执行都会常驻内存，除非刷新页面
             clear=function(){
-               isDownloading(url, false);
+               isDownloading(url, false); //设置正在下载状态为false
                script.onload=script.onreadystatechange=script.onerror=null;
                head.removeChild(script);
                head=script=null;
             },
+            //如果正在下载就必须去轮询检查是否下载完成
+            //但是如果长久都为下载完成，就得退出循环
+            //所以设置一个限制次数，目前设置为10次，
+            //并且每次轮询等待时间随着次数增加而增加
             retryTimes = 1,
+            //轮询等待函数
             waitForSuccess = function(){
-              if(!isDownloading(url)){
+              //如果没有正在下载了（但有可能失败了)，并且已下载列表中也存在了，说明已经下载完毕了
+              if(!isDownloading(url) && isLoadedResource(url)){
                 executeFunction(callback);
-              }else if(retryTimes>10){
+              }else if(retryTimes>10){  //如果重试次数已经到了，说明已经下载挂了
                 alert('js file ['+url+'] download faild!');
                 log('js file ['+url+'] download faild!', 'error');
                 return;
               }else{
+                //重试
                 setTimeout(waitForSuccess, (retryTimes++)*200);
               }
             };
-        
+
+        //如果已经下载，直接执行成功回调
         if(isLoadedResource(url)){
             executeFunction(callback);
             return;
         }
-        //如果正在加载
+        //如果正在加载，就轮询等待
         if(isDownloading(url)){
           setTimeout(waitForSuccess, 200);
           return;
@@ -364,13 +388,14 @@
         script = document.createElement("script");
         script.type = "text/javascript";
         
-       
+       //加载失败
        script.onerror=function(){
            clear();
+           alert('load js file error:'+url, 'error');
            log('load js file error:'+url, 'error');
        }; 
         
-        
+        //如果设置了成功回调函数，需要增加onload事件
         if(isFunction(callback)){
             //如果是IE6-IE8
             if(UA.browser=='ie' && UA.version<9){
@@ -386,14 +411,17 @@
                 }
             }
         }
+        //设置正在加载中
         isDownloading(url, true);
         script.src = url;
         head.appendChild(script);
     }
-      /**
-       *加载css文件 
-       * @param {Object} url
-       */
+     /**
+      * 加载css文件 
+      * @param  {[type]}   url      [description]
+      * @param  {Function} callback [description]
+      * @return {[type]}            [description]
+      */
       function loadCSS(url,callback){
         var head,
             link,
@@ -411,28 +439,34 @@
                 log('load css file success:'+url);
                 executeFunction(callback);
             },
+            //加载完成（包括失败和成功）
+            //都需要把标签的事件清除，减少内存占用，并设置正在加载状态为false
             clear=function(){
                 isDownloading(url, false);
                 timer=null;
                 link.onload=link.onerror=null;
                 head=null;
             },
+            //轮询等待正在加载中的文件加载完成
             waitForSuccess = function(){
-              if(!isDownloading(url)){
+              //如果没有下载中，并且已经下载完了
+              if(!isDownloading(url) && isLoadedResource(url)){
                 executeFunction(callback);
-              }else if(retryTimes>10){
+              }else if(retryTimes>10){  //如果超过10此重试仍然未下载完成，定义为下载失败了
                 alert('css file ['+url+'] download faild!');
                 log('css file ['+url+'] download faild!', 'error');
                 return;
               }else{
+                //继续轮询，每次轮询时间间隔增加200ms
                 setTimeout(waitForSuccess, (retryTimes++)*200);
               }
             };
+        //如果已经加载过了，就直接执行成功回调
         if(isLoadedResource(url)){
             executeFunction(callback);
             return;
         }
-        //如果正在加载
+        //如果正在加载，开始轮询
         if(isDownloading(url)){
           setTimeout(waitForSuccess, 200);
           return;
@@ -442,14 +476,16 @@
         link.rel="stylesheet";
         link.type = "text/css";
         link.href=url;
-        
+        //如果支持就加上
         link.onerror=function(){
            clear();
            log('load css file error:'+url, 'error');
         }; 
+        //设置正在加载中的状态为true
         isDownloading(url, true);
         if(isFunction(callback)){
-            //如果是IE系列,直接load事件
+            //如果是IE系列,或者对应的某种浏览器的版本号
+            //另外手机端的浏览器大豆是webkit内核，所以在这个版本号以上就直接load事件
             if(UA.browser=='ie' 
                 || (UA.browser=='firefox' && UA.version>8.9) 
                 || UA.browser=='opera'
@@ -466,6 +502,8 @@
                 head.appendChild(link);
                 
             }else if(
+              //如果介于某个版本之间，可以用img的src设置为css文件来模拟事件，
+              //但是有个不足就是没办法知道真正的onerror，所以这个真没办法解决
                (UA.browser=='chrome' && UA.version>9)
                || (UA.browser=='safari' && UA.version>4.9) 
                || UA.browser=='firefox' 
@@ -482,12 +520,12 @@
                 };
                 img.src=url;
                 
-            }else{//轮询实现
+            }else{//对于没有办法模拟的话，只能通过轮询实现
                 head.appendChild(link);
                 poll=function(){
                     var _fun =function (){
                           var isD = false;
-                          //如果是webkit的
+                          //如果是webkit的，此处引用于yui3的get模块，以及参考了seajs的改进
                           if(webkit>0 && document.stylesheet){
                             isD = isLoadedResource(url);
                           }else{
@@ -502,6 +540,7 @@
                           }
                           return isD;
                         };
+                    //如果都已经有10此了还没有成功就定义为失败了
                     if(retryTimes>10){
                       alert('css file' + url +' download faild!');
                       log('css file' + url +' download faild!', 'error');
@@ -521,7 +560,7 @@
       }
       /**
        *异步加载所需的文件 
-       * @param {Array} urls
+       * @param {Array|String} urls
        * @param {Function} callback
        * @param {Boolean} [option=true] isOrdered 是否需要按序加载，默认是需要按序加载
        */
@@ -580,21 +619,34 @@
     return /^(\S+:)?\/\/\S+$/i.test(url);
   }
   /**
-   * 是不是相对路径
+   * 是不是相对路径,通过/xxx,./xxx,../xxx来判断
    * @param  {[type]}  path [description]
    * @return {Boolean}      [description]
    */
   function isRelativePath(path){
     return /^(?:\/\S+|\.\/\S+|\.\.\/\S+|\S+\/)/i.test(path);
   }
+  /**
+   * 判断文件名或者路径是不是某个扩展名的文件或链接，支持http://x.com/x.js?fsfsf=fsf#dfsfsf=fsf
+   * @param  {[type]} ext [description]
+   * @param  {[type]} str [description]
+   * @return {[Boolean]}     [description]
+   */
   function checkFileExtension(ext, str){
     var reg = new RegExp('\\.'+ext+'([\\?#]\\S+)?$', 'i');
     return reg.test(str);
   }
   /**
-   * 获取url的相关信息
+   * 获取url的相关信息，模拟location相对应的参数
    * @param  {[type]} url [description]
-   * @return {[type]}     [description]
+   * @return {[type]}     {
+   *         origin:
+   *         pathName:
+   *         fileName:
+   *         search:
+   *         hash:
+   *         href:
+   * }
    */
   function getPathInfo(url){
     var pathInfo={
@@ -708,7 +760,7 @@
       }
       return (baseInfo?baseInfo.origin:'')+a1.join('/');
     } 
-    var ISDOMREADY=false;
+    var ISDOMREADY=false; //标记当前的状态是不是已经domready了
     /** 
      * [afterDomReady description]
      * @param  {Function} callback [description]
@@ -716,10 +768,12 @@
      */
     function afterDomReady(callback){
       var doc = document;
+      //如果此时文档已经加载完毕的状态，直接执行回调函数
       if(ISDOMREADY || /complete/i.test(doc.readyState)){
         ISDOMREADY = true;
         executeFunction(callback);
       }else if(doc.addEventListener){
+        //如果浏览器支持dom contentloaded，就用这个
         doc.addEventListener('DOMContentLoaded', function(){
             if(ISDOMREADY){
               return;
@@ -728,6 +782,7 @@
             executeFunction(callback);
          }, false);
       }else if(doc.attachEvent){
+          //如果支持此方法就用onreadystatechange
           doc.attachEvent('onreadystatechange', function(){
             if(ISDOMREADY){
               return;
@@ -737,10 +792,10 @@
          }, false);
       }
     }
-
+  //对外输出此全局对象，所有的API输出到Util下
 	win.BJT ={
-    version:'0.0.1',
-    status:'dev',
+    version:'0.0.1',  //核心文件版本号
+    status:'dev',     //当前的状态是开发版本，当通过grunt编译工具打包之后会将此值设定为online模式，用于区别线上线下环境
 		Util:{
       UA:UA,
 			hasOwn:hasOwn,
